@@ -27,3 +27,6 @@ class ModuleBuildCacheIR():
         self.CacheCrash = False
         self.PreMakeCacheHit = False
         self.MakeCacheHit = False
+        # Hash Cache used for increamental build
+        self.IncrmtlCacheHit = False
+

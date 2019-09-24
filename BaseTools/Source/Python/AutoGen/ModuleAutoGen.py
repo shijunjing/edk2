@@ -1731,6 +1731,12 @@ class ModuleAutoGen(AutoGen):
             for File in gDict[(self.MetaFile.Path, self.Arch)].AutoGenFileList:
                 CopyFileOnChange(str(File), CacheDebugDir)
 
+        for Root, Dirs, Files in os.walk(self.DebugDir):
+            for File in Files:
+                if File.lower().endswith('.dll'):
+                    NewFile = path.join(self.DebugDir, File)
+                    CopyFileOnChange(NewFile, CacheDebugDir)
+
         return True
 
     ## Create makefile for the module and its dependent libraries
@@ -1914,50 +1920,15 @@ class ModuleAutoGen(AutoGen):
                     self._ApplyBuildRule(Lib.Target, TAB_UNKNOWN_FILE)
         return RetVal
 
-    def GenModuleHash(self):
-        # Initialize a dictionary for each arch type
-        if self.Arch not in GlobalData.gModuleHash:
-            GlobalData.gModuleHash[self.Arch] = {}
-
-        # Early exit if module or library has been hashed and is in memory
-        if self.Name in GlobalData.gModuleHash[self.Arch]:
-            return GlobalData.gModuleHash[self.Arch][self.Name].encode('utf-8')
-
-        # Initialze hash object
-        m = hashlib.md5()
-
-        # Add Platform level hash
-        m.update(GlobalData.gPlatformHash.encode('utf-8'))
-
-        # Add Package level hash
-        if self.DependentPackageList:
-            for Pkg in sorted(self.DependentPackageList, key=lambda x: x.PackageName):
-                if Pkg.PackageName in GlobalData.gPackageHash:
-                    m.update(GlobalData.gPackageHash[Pkg.PackageName].encode('utf-8'))
-
-        # Add Library hash
-        if self.LibraryAutoGenList:
-            for Lib in sorted(self.LibraryAutoGenList, key=lambda x: x.Name):
-                if Lib.Name not in GlobalData.gModuleHash[self.Arch]:
-                    Lib.GenModuleHash()
-                m.update(GlobalData.gModuleHash[self.Arch][Lib.Name].encode('utf-8'))
-
-        # Add Module self
-        with open(str(self.MetaFile), 'rb') as f:
-            Content = f.read()
-        m.update(Content)
-
-        # Add Module's source files
-        if self.SourceFileList:
-            for File in sorted(self.SourceFileList, key=lambda x: str(x)):
-                f = open(str(File), 'rb')
-                Content = f.read()
-                f.close()
-                m.update(Content)
-
-        GlobalData.gModuleHash[self.Arch][self.Name] = m.hexdigest()
-
-        return GlobalData.gModuleHash[self.Arch][self.Name].encode('utf-8')
+    def GenModuleIncrmtlHash(self, gDict):
+        self.GenModuleFilesHash(gDict)
+        self.GenPreMakefileHash(gDict)
+        if not (self.MetaFile.Path, self.Arch) in gDict or \
+           not gDict[(self.MetaFile.Path, self.Arch)].PreMakefileHashHexDigest:
+            EdkLogger.quiet("[cache warning]: Cannot generate PreMakefileHashHexDigest for module %s[%s]" %(self.MetaFile.Path, self.Arch))
+            return None
+        else:
+            return gDict[(self.MetaFile.Path, self.Arch)].PreMakefileHashHexDigest.encode('utf-8')
 
     def GenModuleFilesHash(self, gDict):
         # Early exit if module or library has been hashed and is in memory
@@ -2077,8 +2048,6 @@ class ModuleAutoGen(AutoGen):
             for Pkg in sorted(self.DependentPackageList, key=lambda x: x.PackageName):
                 if (Pkg.PackageName, 'PackageHash') in gDict:
                     m.update(gDict[(Pkg.PackageName, 'PackageHash')].encode('utf-8'))
-                else:
-                    EdkLogger.quiet("[cache warning]: %s PackageHash needed by %s[%s] is missing" %(Pkg.PackageName, self.MetaFile.Name, self.Arch))
 
         # Add Library hash
         if self.LibraryAutoGenList:
@@ -2240,6 +2209,53 @@ class ModuleAutoGen(AutoGen):
             gDict[(self.MetaFile.Path, self.Arch)] = IR
 
         return gDict[(self.MetaFile.Path, self.Arch)]
+
+
+    ## Decide whether we can skip the left autogen and make process
+    def CanSkipbyIncrmtlCache(self, gDict):
+        if not GlobalData.gUseHashCache:
+            return False
+
+        # Disable incremental cache if binary cache is enabled
+        if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+            return False
+
+        if not (self.MetaFile.Path, self.Arch) in gDict:
+            return False
+
+        if gDict[(self.MetaFile.Path, self.Arch)].IncrmtlCacheHit:
+            return True
+
+        if gDict[(self.MetaFile.Path, self.Arch)].CacheCrash:
+            return False
+
+        # If Module is binary, do not skip by cache
+        if self.IsBinaryModule:
+            return False
+
+        # .inc is contains binary information so do not skip by hash as well
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                return False
+
+        # Early exit for libraries that haven't yet finished building
+        HashFile = path.join(self.BuildDir, self.Name + ".hash")
+        if not os.path.exists(HashFile):
+            return False
+
+        with open(HashFile, "rb") as f:
+            if self.GenModuleIncrmtlHash(gDict) == f.read():
+                IncrmtlCacheHit = True
+            else:
+                IncrmtlCacheHit = False
+
+        if IncrmtlCacheHit:
+            with GlobalData.cache_lock:
+                IR = gDict[(self.MetaFile.Path, self.Arch)]
+                IR.IncrmtlCacheHit = IncrmtlCacheHit
+                gDict[(self.MetaFile.Path, self.Arch)] = IR
+            print("[hash hit]:", self.MetaFile.Path, self.Arch)
+        return IncrmtlCacheHit
 
     ## Decide whether we can skip the left autogen and make process
     def CanSkipbyPreMakefileCache(self, gDict):
@@ -2500,7 +2516,7 @@ class ModuleAutoGen(AutoGen):
     ## Decide whether we can skip the ModuleAutoGen process
     def CanSkipbyCache(self, gDict):
         # Hashing feature is off
-        if not GlobalData.gBinCacheSource:
+        if not GlobalData.gUseHashCache:
             return False
 
         if self in GlobalData.gBuildHashSkipTracking:
@@ -2519,6 +2535,10 @@ class ModuleAutoGen(AutoGen):
 
         if not (self.MetaFile.Path, self.Arch) in gDict:
             return False
+
+        if gDict[(self.MetaFile.Path, self.Arch)].IncrmtlCacheHit:
+            GlobalData.gBuildHashSkipTracking[self] = True
+            return True
 
         if gDict[(self.MetaFile.Path, self.Arch)].PreMakeCacheHit:
             GlobalData.gBuildHashSkipTracking[self] = True

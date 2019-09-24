@@ -612,9 +612,9 @@ class BuildTask:
             self.CompleteFlag = True
 
             # Run hash operation post dependency, to account for libs
-            if GlobalData.gUseHashCache and self.BuildItem.BuildObject.IsLibrary:
+            if GlobalData.gUseHashCache:
                 HashFile = path.join(self.BuildItem.BuildObject.BuildDir, self.BuildItem.BuildObject.Name + ".hash")
-                SaveFileOnChange(HashFile, self.BuildItem.BuildObject.GenModuleHash(), True)
+                SaveFileOnChange(HashFile, self.BuildItem.BuildObject.GenModuleIncrmtlHash(GlobalData.gCacheIR), True)
         except:
             #
             # TRICK: hide the output of threads left running, so that the user can
@@ -630,14 +630,6 @@ class BuildTask:
             BuildTask._ErrorFlag.set()
             BuildTask._ErrorMessage = "%s broken\n    %s [%s]" % \
                                       (threading.currentThread().getName(), Command, WorkingDir)
-
-        # Set the value used by hash invalidation flow in GlobalData.gModuleBuildTracking to 'SUCCESS'
-        # If Module or Lib is being tracked, it did not fail header check test, and built successfully
-        if (self.BuildItem.BuildObject in GlobalData.gModuleBuildTracking and
-           GlobalData.gModuleBuildTracking[self.BuildItem.BuildObject] != 'FAIL_METAFILE' and
-           not BuildTask._ErrorFlag.isSet()
-           ):
-            GlobalData.gModuleBuildTracking[self.BuildItem.BuildObject] = 'SUCCESS'
 
         # indicate there's a thread is available for another build task
         BuildTask._RunningQueueLock.acquire()
@@ -840,6 +832,10 @@ class Build():
                         PcdMa.GenModuleFilesHash(share_data)
                         PcdMa.GenPreMakefileHash(share_data)
                         if PcdMa.CanSkipbyPreMakefileCache(share_data):
+                            continue
+                    elif GlobalData.gUseHashCache and self.Target in [None, "", "all"]:
+                        PcdMa.GenModuleIncrmtlHash(share_data)
+                        if PcdMa.CanSkipbyIncrmtlCache(share_data):
                             continue
 
                     PcdMa.CreateCodeFile(False)
@@ -1159,38 +1155,6 @@ class Build():
             if Process.returncode != 0 :
                 EdkLogger.error("Postbuild", POSTBUILD_ERROR, 'Postbuild process is not success!')
             EdkLogger.info("\n- Postbuild Done -\n")
-
-    ## Error handling for hash feature
-    #
-    # On BuildTask error, iterate through the Module Build tracking
-    # dictionary to determine wheather a module failed to build. Invalidate
-    # the hash associated with that module by removing it from storage.
-    #
-    #
-    def invalidateHash(self):
-        # Only for hashing feature
-        if not GlobalData.gUseHashCache:
-            return
-
-        # GlobalData.gModuleBuildTracking contains only modules or libs that cannot be skipped by hash
-        for Ma in GlobalData.gModuleBuildTracking:
-            # Skip invalidating for Successful Module/Lib builds
-            if GlobalData.gModuleBuildTracking[Ma] == 'SUCCESS':
-                continue
-
-            # The module failed to build, failed to start building, or failed the header check test from this point on
-
-            # Remove .hash from build
-            ModuleHashFile = os.path.join(Ma.BuildDir, Ma.Name + ".hash")
-            if os.path.exists(ModuleHashFile):
-                os.remove(ModuleHashFile)
-
-            # Remove .hash file from cache
-            if GlobalData.gBinCacheDest:
-                FileDir = os.path.join(GlobalData.gBinCacheDest, Ma.PlatformInfo.OutputDir, Ma.BuildTarget + "_" + Ma.ToolChain, Ma.Arch, Ma.SourceDir, Ma.MetaFile.BaseName)
-                HashFile = os.path.join(FileDir, Ma.Name + '.hash')
-                if os.path.exists(HashFile):
-                    os.remove(HashFile)
 
     ## Build a module or platform
     #
@@ -1836,7 +1800,7 @@ class Build():
                     CmdListDict = self._GenFfsCmd(Wa.ArchList)
 
                 # Add Platform and Package level hash in share_data for module hash calculation later
-                if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+                if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest or GlobalData.gUseHashCache:
                     GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
                     for PkgName in GlobalData.gPackageHash.keys():
                         GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
@@ -1872,6 +1836,10 @@ class Build():
                                     self.HashSkipModules.append(Ma)
                                     EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
                                     continue
+                            elif GlobalData.gUseHashCache and self.Target in [None, "", "all"]:
+                                Ma.GenModuleIncrmtlHash(GlobalData.gCacheIR)
+                                if Ma.CanSkipbyIncrmtlCache(GlobalData.gCacheIR):
+                                    continue
 
                             # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
                             if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
@@ -1905,8 +1873,6 @@ class Build():
                                         Ma.PrintFirstMakeCacheMissFile(GlobalData.gCacheIR)
 
                             self.BuildModules.append(Ma)
-                            # Initialize all modules in tracking to 'FAIL'
-                            GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     MakeStart = time.time()
                     for Ma in self.BuildModules:
@@ -1917,7 +1883,6 @@ class Build():
                             # we need a full version of makefile for platform
                             ExitFlag.set()
                             BuildTask.WaitForComplete()
-                            self.invalidateHash()
                             Pa.CreateMakeFile(False)
                             EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
                         # Start task scheduler
@@ -1927,7 +1892,6 @@ class Build():
                     # in case there's an interruption. we need a full version of makefile for platform
                     Pa.CreateMakeFile(False)
                     if BuildTask.HasError():
-                        self.invalidateHash()
                         EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
                     self.MakeTime += int(round((time.time() - MakeStart)))
 
@@ -1940,7 +1904,6 @@ class Build():
                 self.BuildModules = []
                 self.MakeTime += int(round((time.time() - MakeContiue)))
                 if BuildTask.HasError():
-                    self.invalidateHash()
                     EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
 
                 self.BuildReport.AddPlatformReport(Wa, MaList)
@@ -1993,7 +1956,6 @@ class Build():
                     # Save MAP buffer into MAP file.
                     #
                     self._SaveMapFile (MapBuffer, Wa)
-        self.invalidateHash()
 
     def _GenFfsCmd(self,ArchList):
         # convert dictionary of Cmd:(Inf,Arch)
@@ -2105,7 +2067,7 @@ class Build():
             CmdListDict = self._GenFfsCmd(Wa.ArchList)
 
         # Add Platform and Package level hash in share_data for module hash calculation later
-        if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+        if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest or GlobalData.gUseHashCache:
             GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
             for PkgName in GlobalData.gPackageHash.keys():
                 GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
@@ -2142,7 +2104,7 @@ class Build():
                 ModuleCodaFile[(ma.MetaFile.File,ma.MetaFile.Root,ma.Arch,ma.MetaFile.Path)] = [item.Target for item in ma.CodaTargetList]
             Pa.DataPipe.DataContainer = {"ModuleCodaFile":ModuleCodaFile}
             for Module in ModuleList:
-                        # Get ModuleAutoGen object to generate C code file and makefile
+                # Get ModuleAutoGen object to generate C code file and makefile
                 Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
 
                 if Ma is None:
@@ -2152,9 +2114,6 @@ class Build():
                     Ma.Workspace = Wa
                     PcdMaList.append(Ma)
                 TotalModules.append(Ma)
-                # Initialize all modules in tracking to 'FAIL'
-                GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
-
 
             mqueue = mp.Queue()
             for m in Pa.GetAllModuleInfo:
@@ -2165,8 +2124,12 @@ class Build():
             autogen_rt, errorcode = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList,GlobalData.gCacheIR)
 
             # Skip cache hit modules
-            if GlobalData.gBinCacheSource:
+            if GlobalData.gUseHashCache:
                 for Ma in TotalModules:
+                    if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
+                        GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].IncrmtlCacheHit:
+                            self.HashSkipModules.append(Ma)
+                            continue
                     if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
                         GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].PreMakeCacheHit:
                             self.HashSkipModules.append(Ma)
@@ -2224,7 +2187,9 @@ class Build():
                     for IR in GlobalData.gCacheIR.keys():
                         if 'PlatformHash' in IR or 'PackageHash' in IR:
                             continue
-                        if GlobalData.gCacheIR[IR].PreMakeCacheHit or GlobalData.gCacheIR[IR].MakeCacheHit:
+                        if GlobalData.gCacheIR[IR].PreMakeCacheHit or \
+                           GlobalData.gCacheIR[IR].MakeCacheHit or \
+                           GlobalData.gCacheIR[IR].IncrmtlCacheHit:
                             CacheHitMa.add(IR)
                         else:
                             # There might be binary module or module which has .inc files, not count for cache miss
@@ -2242,7 +2207,6 @@ class Build():
                             # we need a full version of makefile for platform
                             ExitFlag.set()
                             BuildTask.WaitForComplete()
-                            self.invalidateHash()
                             Pa.CreateMakeFile(False)
                             EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
                         # Start task scheduler
@@ -2252,7 +2216,6 @@ class Build():
                     # in case there's an interruption. we need a full version of makefile for platform
 
                     if BuildTask.HasError():
-                        self.invalidateHash()
                         EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
                     self.MakeTime += int(round((time.time() - MakeStart)))
 
@@ -2274,7 +2237,6 @@ class Build():
                 # has been signaled.
                 #
                 if BuildTask.HasError():
-                    self.invalidateHash()
                     EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
 
                 # Create MAP file when Load Fix Address is enabled.
@@ -2315,7 +2277,6 @@ class Build():
                     #
                     self._SaveMapFile(MapBuffer, Wa)
                 self.CreateGuidedSectionToolsFile(Wa)
-        self.invalidateHash()
     ## Generate GuidedSectionTools.txt in the FV directories.
     #
     def CreateGuidedSectionToolsFile(self,Wa):

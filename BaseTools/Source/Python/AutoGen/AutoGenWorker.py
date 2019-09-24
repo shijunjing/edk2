@@ -184,6 +184,7 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gDisableIncludePathCheck = False
             GlobalData.gFdfParser = self.data_pipe.Get("FdfParser")
             GlobalData.gDatabasePath = self.data_pipe.Get("DatabasePath")
+            GlobalData.gUseHashCache = self.data_pipe.Get("UseHashCache")
             GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
             GlobalData.gBinCacheDest = self.data_pipe.Get("BinCacheDest")
             GlobalData.gCacheIR = self.share_data
@@ -239,6 +240,10 @@ class AutoGenWorkerInProcess(mp.Process):
                     Ma.GenModuleFilesHash(GlobalData.gCacheIR)
                     Ma.GenPreMakefileHash(GlobalData.gCacheIR)
                     if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
+                        continue
+                elif GlobalData.gUseHashCache and CommandTarget in [None, "", "all"]:
+                    Ma.GenModuleIncrmtlHash(GlobalData.gCacheIR)
+                    if Ma.CanSkipbyIncrmtlCache(GlobalData.gCacheIR):
                         continue
 
                 Ma.CreateCodeFile(False)

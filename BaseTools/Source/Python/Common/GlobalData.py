@@ -109,11 +109,6 @@ gModuleHash = {}
 gEnableGenfdsMultiThread = True
 gSikpAutoGenCache = set()
 
-# Dictionary for tracking Module build status as success or failure
-# Top Dict:     Key: Arch Type              Value: Dictionary
-# Second Dict:  Key: AutoGen Obj    Value: 'SUCCESS'\'FAIL'\'FAIL_METAFILE'
-gModuleBuildTracking = dict()
-
 # Dictionary of booleans that dictate whether a module or
 # library can be skiped
 # Top Dict:     Key: Arch Type              Value: Dictionary
