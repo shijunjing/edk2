@@ -968,8 +968,6 @@ cleanlib:
         for aFile in headerFileDependencySet:
             if aFile in headerFilesInMetaFileSet:
                 continue
-            if GlobalData.gUseHashCache:
-                GlobalData.gModuleBuildTracking[self._AutoGenObject] = 'FAIL_METAFILE'
             EdkLogger.warn("build","Module MetaFile [Sources] is missing local header!",
                         ExtraData = "Local Header: " + aFile + " not found in " + self._AutoGenObject.MetaFile.Path
                         )
