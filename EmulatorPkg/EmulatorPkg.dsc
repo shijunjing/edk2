@@ -315,14 +315,20 @@
   #  PEI Phase modules
   ##
   MdeModulePkg/Core/Pei/PeiMain.inf
+
   MdeModulePkg/Universal/PCD/Pei/Pcd.inf  {
    <LibraryClasses>
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
+      NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
   }
   MdeModulePkg/Universal/ReportStatusCodeRouter/Pei/ReportStatusCodeRouterPei.inf
   MdeModulePkg/Universal/StatusCodeHandler/Pei/StatusCodeHandlerPei.inf
 
-  EmulatorPkg/BootModePei/BootModePei.inf
+  EmulatorPkg/BootModePei/BootModePei.inf {
+   <LibraryClasses>
+     NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
+  }
+
   MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
   EmulatorPkg/AutoScanPei/AutoScanPei.inf
@@ -382,6 +388,7 @@
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf {
     <LibraryClasses>
       NULL|MdeModulePkg/Library/VarCheckUefiLib/VarCheckUefiLib.inf
+      NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
   }
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf

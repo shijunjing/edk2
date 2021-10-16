@@ -1,0 +1,47 @@
+## @file
+#  Implement the compiler instrumentation routines for AddressSanitizer(ASan).
+#  AddressSanitizer is an address sanity checker, see its details in below link:
+#  https://github.com/google/sanitizers/wiki/AddressSanitizer
+#   
+#  Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php.
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = LibSimLib
+  MODULE_UNI_FILE                = LibSimLib.uni
+  FILE_GUID                      = aa960768-2911-40de-b620-3277078f4c70
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.1
+  LIBRARY_CLASS                  = LibSimLib
+  CONSTRUCTOR                    = LibSimConstructor
+#
+#  VALID_ARCHITECTURES           = IA32 X64 
+#
+
+[Sources]
+  SanitizerCoverage.c
+  SanitizerCoverage_sections.c
+  SerialDebug.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EmulatorPkg/EmulatorPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  DebugLib
+
+[BuildOptions]
+  CLANGPDB:*_*_*_CC_FLAGS = -Wno-frame-address -Wno-unknown-attributes -O0 -fno-lto -fno-function-sections -fno-data-sections -target x86_64-pc-win32 -Wno-microsoft-static-assert
+#  GCC:*_CLANGPDB_IA32_CC_FLAGS == -m32 -g -fshort-wchar -fno-strict-aliasing -Wall -c -include AutoGen.h -D _CRT_SECURE_NO_WARNINGS -Wnonportable-include-path  -D UNICODE -D _CRT_SECURE_NO_DEPRECATE
