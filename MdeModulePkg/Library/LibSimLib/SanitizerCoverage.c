@@ -52,8 +52,9 @@ void __sanitizer_symbolize_pc(void *pc, const char *fmt, char *out_buf,
 void __sanitizer_symbolize_global(void *data_ptr, const char *fmt,
                                   char *out_buf, size_t out_buf_size);
 
-
- __attribute__((no_sanitize("coverage")))
+// clang only support no_sanitize("coverage") attribute if
+// compiler-rt project is enabled when build LLVM/Clang compiler
+// __attribute__((no_sanitize("coverage")))
 void __sanitizer_cov_trace_pc_guard_init(UINT32* start, UINT32* stop) {
   //if (start == end || *start) return;
   //SerialOutput (__FILE__);
@@ -67,7 +68,9 @@ void __sanitizer_cov_trace_pc_guard_init(UINT32* start, UINT32* stop) {
 
 }
 
- __attribute__((no_sanitize("coverage")))
+// clang only support no_sanitize("coverage") attribute if
+// compiler-rt project is enabled when build LLVM/Clang compiler
+// __attribute__((no_sanitize("coverage")))
 void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
   if (!*guard) return;
 
@@ -80,7 +83,9 @@ void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
   DEBUG ((EFI_D_ERROR, "guard=0x%x, *guard=0x%x, PC=0x%x\n",guard, *guard, PC));
 }
 
- __attribute__((no_sanitize("coverage")))
+// clang only support no_sanitize("coverage") attribute if
+// compiler-rt project is enabled when build LLVM/Clang compiler
+// __attribute__((no_sanitize("coverage")))
 RETURN_STATUS
 EFIAPI
 LibSimConstructor (
