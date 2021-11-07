@@ -66,6 +66,7 @@ void __sanitizer_cov_trace_pc_guard_init(UINT32* start, UINT32* stop) {
   for (UINT32 *x = start; x < stop; x++)
     *x = ++N;  // Guards should start from 1.
 
+  DEBUG ((EFI_D_ERROR, "Total BB Count= 0x%x\n", N));
 }
 
 // clang only support no_sanitize("coverage") attribute if
@@ -74,13 +75,14 @@ void __sanitizer_cov_trace_pc_guard_init(UINT32* start, UINT32* stop) {
 void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
   if (!*guard) return;
 
-  void *PC = __builtin_return_address(0);
+  //void *PC = __builtin_return_address(0);
   //char PcDescr[1024];
   // This function is a part of the sanitizer run-time.
   // To use it, link with AddressSanitizer or other sanitizer.
   //__sanitizer_symbolize_pc(PC, "%p %F %L", PcDescr, sizeof(PcDescr));
   //printf("guard: %p %x PC %s\n", guard, *guard, PcDescr);
-  DEBUG ((EFI_D_ERROR, "guard=0x%x, *guard=0x%x, PC=0x%x\n",guard, *guard, PC));
+  //DEBUG ((EFI_D_ERROR, "guard=0x%x, *guard=0x%x, PC=0x%x\n",guard, *guard, PC));
+  DEBUG ((EFI_D_ERROR, "BB:0x%x\n", *guard));
 }
 
 // clang only support no_sanitize("coverage") attribute if
