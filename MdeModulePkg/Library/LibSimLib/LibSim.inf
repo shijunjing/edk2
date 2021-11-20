@@ -39,8 +39,15 @@
   EmulatorPkg/EmulatorPkg.dec
 
 [LibraryClasses]
+#  DebugLib
+  PrintLib
   BaseLib
-  DebugLib
+
+[Ppis]
+  gEmuThunkPpiGuid                       # PPI ALWAYS_CONSUMED
+
+[Pcd]
+  gEmulatorPkgTokenSpaceGuid.PcdPeiServicesTablePage
 
 [BuildOptions]
   CLANGPDB:*_*_*_CC_FLAGS = -Wno-frame-address -Wno-unknown-attributes -O0 -fno-lto -fno-function-sections -fno-data-sections -target x86_64-pc-win32 -Wno-microsoft-static-assert
