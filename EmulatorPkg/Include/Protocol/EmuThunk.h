@@ -238,9 +238,9 @@ struct _EMU_THUNK_PROTOCOL {
   ///
   /// Generic System Services
   ///
-  EMU_GET_NEXT_PROTOCOL                GetNextProtocol;
+  EMU_GET_NEXT_PROTOCOL             GetNextProtocol;
 
-  UINT64                               GuardCountExecuted;
+  UINT64                            GuardCountExecuted;
 };
 
 extern EFI_GUID  gEmuThunkProtocolGuid;
