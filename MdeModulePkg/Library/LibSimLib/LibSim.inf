@@ -2,7 +2,7 @@
 #  Implement the compiler instrumentation routines for AddressSanitizer(ASan).
 #  AddressSanitizer is an address sanity checker, see its details in below link:
 #  https://github.com/google/sanitizers/wiki/AddressSanitizer
-#   
+#
 #  Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
@@ -25,13 +25,12 @@
   LIBRARY_CLASS                  = LibSimLib
   CONSTRUCTOR                    = LibSimConstructor
 #
-#  VALID_ARCHITECTURES           = IA32 X64 
+#  VALID_ARCHITECTURES           = IA32 X64
 #
 
 [Sources]
   SanitizerCoverage.c
   SanitizerCoverage_sections.c
-  SerialDebug.c
 
 [Packages]
   MdePkg/MdePkg.dec
