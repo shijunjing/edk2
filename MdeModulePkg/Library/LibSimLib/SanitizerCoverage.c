@@ -182,7 +182,7 @@ void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
   //printf("guard: %p %x PC %s\n", guard, *guard, PcDescr);
   //DEBUG ((EFI_D_ERROR, "guard=0x%x, *guard=0x%x, PC=0x%x\n",guard, *guard, PC));
   //ThunkPrint ("guard:0x%x *guard:0x%x PC:0x%x\n", guard, *guard, PC);
-  ThunkPrint ("BB:0x%x\n", *guard);
+  //ThunkPrint ("BB:0x%x\n", *guard);
 
   if (!Guard_Executed){
       //
@@ -201,6 +201,7 @@ void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
       }
   } else{
       (*Guard_Executed)++;
+      Emu_Thunk->SimContinue (100);
   }
 }
 

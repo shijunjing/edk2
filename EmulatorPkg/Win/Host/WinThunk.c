@@ -29,6 +29,7 @@ Abstract:
 **/
 
 #include "WinHost.h"
+#include <simics/simulator-api.h>
 
 UINTN
 SecWriteStdErr (
@@ -540,7 +541,23 @@ SecSetTime (
   }
 }
 
-EMU_THUNK_PROTOCOL  gEmuThunkProtocol = {
+
+extern conf_object_t *mem_obj;
+extern conf_object_t *dma_obj;
+
+UINT64
+SecSimContinue (
+  IN  UINT64      Steps
+  )
+{
+  SIM_continue(Steps);
+  double current_time;
+  current_time = SIM_time(dma_obj);
+  // current_time = SIM_time(mem_obj);
+  //printf("current_time = %f \n", current_time);
+}
+
+EMU_THUNK_PROTOCOL gEmuThunkProtocol = {
   SecWriteStdErr,
   SecConfigStdIn,
   SecWriteStdOut,
@@ -562,7 +579,9 @@ EMU_THUNK_PROTOCOL  gEmuThunkProtocol = {
   SecGetTime,
   SecSetTime,
   SecSetTimer,
-  GetNextThunkProtocol
+  GetNextThunkProtocol,
+  0,                      //UINT64  GuardCountExecuted;
+  SecSimContinue          //SIM_CONTINUE
 };
 
 #pragma warning(default : 4996)

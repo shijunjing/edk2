@@ -1,0 +1,56 @@
+## @file
+# Component description file for SampleDmaDevicePei module
+#
+# Copyright (c) 2022, Intel Corporation. All rights reserved.<BR>
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SampleDmaDevicePei
+  FILE_GUID                      = E2E9B41E-1CB1-4CF9-AE9C-1AAA472819FF
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+
+  ENTRY_POINT                    = InitSampleDmaDevice
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  SampleDmaDevicePei.c
+
+
+[Packages]
+  MdePkg/MdePkg.dec
+  EmulatorPkg/EmulatorPkg.dec
+
+
+[LibraryClasses]
+  PeiServicesTablePointerLib
+  PeiServicesLib
+  BaseLib
+  PeimEntryPoint
+  DebugLib
+  BaseMemoryLib
+
+[Ppis]
+  gSimicsIoPpiGuid                              # PPI ALWAYS_CONSUMED
+  gEfiPeiMasterBootModePpiGuid                  # PPI ALWAYS_PRODUCED
+  gEfiPeiBootInRecoveryModePpiGuid              # PPI SOMETIMES_PRODUCED
+
+[FixedPcd]
+  gEmulatorPkgTokenSpaceGuid.PcdEmuBootMode
+
+[Depex]
+  TRUE
+
+[BuildOptions]
+  CLANGPDB:*_*_*_CC_FLAGS  = -fsanitize-coverage=edge,trace-pc-guard -fno-lto
+

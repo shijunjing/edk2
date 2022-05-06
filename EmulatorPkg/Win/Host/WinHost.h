@@ -26,6 +26,7 @@ Abstract:
 #include <Guid/FileSystemInfo.h>
 #include <Guid/FileSystemVolumeLabelInfo.h>
 #include <Ppi/EmuThunk.h>
+#include <Ppi/SimicsIo.h>
 #include <Protocol/EmuThunk.h>
 #include <Protocol/SimpleFileSystem.h>
 
@@ -203,12 +204,12 @@ EfiSystemMemoryRange (
 VOID
 SecInitializeThunk (
   VOID
-  );
-
-extern EMU_THUNK_PROTOCOL     gEmuThunkProtocol;
-extern EMU_IO_THUNK_PROTOCOL  mWinNtWndThunkIo;
-extern EMU_IO_THUNK_PROTOCOL  mWinNtFileSystemThunkIo;
-extern EMU_IO_THUNK_PROTOCOL  mWinNtBlockIoThunkIo;
-extern EMU_IO_THUNK_PROTOCOL  mWinNtSnpThunkIo;
+);
+extern EMU_THUNK_PROTOCOL    gEmuThunkProtocol;
+extern EMU_IO_THUNK_PROTOCOL mWinNtWndThunkIo;
+extern EMU_IO_THUNK_PROTOCOL mWinNtFileSystemThunkIo;
+extern EMU_IO_THUNK_PROTOCOL mWinNtBlockIoThunkIo;
+extern EMU_IO_THUNK_PROTOCOL mWinNtSnpThunkIo;
+extern SIMICS_IO_PPI         *SimicsIoPpiPtr;
 
 #endif

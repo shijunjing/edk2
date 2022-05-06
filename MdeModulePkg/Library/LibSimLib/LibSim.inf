@@ -50,5 +50,5 @@
   gEmulatorPkgTokenSpaceGuid.PcdPeiServicesTablePage
 
 [BuildOptions]
-  CLANGPDB:*_*_*_CC_FLAGS = -Wno-frame-address -Wno-unknown-attributes -O0 -fno-lto -fno-function-sections -fno-data-sections -target x86_64-pc-win32 -Wno-microsoft-static-assert
+  CLANGPDB:*_*_*_CC_FLAGS = -Wno-frame-address -Wno-unknown-attributes -O0 -fno-lto -fno-function-sections -fno-data-sections -target x86_64-pc-windows-msvc -Wno-microsoft-static-assert
 #  GCC:*_CLANGPDB_IA32_CC_FLAGS == -m32 -g -fshort-wchar -fno-strict-aliasing -Wall -c -include AutoGen.h -D _CRT_SECURE_NO_WARNINGS -Wnonportable-include-path  -D UNICODE -D _CRT_SECURE_NO_DEPRECATE

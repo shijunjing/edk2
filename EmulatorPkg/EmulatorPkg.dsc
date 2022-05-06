@@ -232,7 +232,7 @@
   gEfiSecurityPkgTokenSpaceGuid.PcdUserPhysicalPresence|TRUE
 !endif
 
-  gEmulatorPkgTokenSpaceGuid.PcdEmuMemorySize|L"64!64"
+  gEmulatorPkgTokenSpaceGuid.PcdEmuMemorySize|L"128"
 
   # Change PcdBootManagerMenuFile to UiApp
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x21, 0xaa, 0x2c, 0x46, 0x14, 0x76, 0x03, 0x45, 0x83, 0x6e, 0x8a, 0xb6, 0xf4, 0x66, 0x23, 0x31 }
@@ -314,7 +314,10 @@
   ##
   #  PEI Phase modules
   ##
-  MdeModulePkg/Core/Pei/PeiMain.inf
+  MdeModulePkg/Core/Pei/PeiMain.inf{
+   <LibraryClasses>
+     NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
+  }
 
   MdeModulePkg/Universal/PCD/Pei/Pcd.inf  {
    <LibraryClasses>
@@ -325,6 +328,11 @@
   MdeModulePkg/Universal/StatusCodeHandler/Pei/StatusCodeHandlerPei.inf
 
   EmulatorPkg/BootModePei/BootModePei.inf {
+   <LibraryClasses>
+     NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
+  }
+
+  EmulatorPkg/Simics/SampleDmaDevicePei/SampleDmaDevicePei.inf {
    <LibraryClasses>
      NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
   }
@@ -347,6 +355,7 @@
       DxeEmuLib|EmulatorPkg/Library/DxeEmuLib/DxeEmuLib.inf
       NULL|MdeModulePkg/Library/DxeCrc32GuidedSectionExtractLib/DxeCrc32GuidedSectionExtractLib.inf
       NULL|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+      NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
   }
   MdeModulePkg/Universal/PCD/Dxe/Pcd.inf {
     <LibraryClasses>

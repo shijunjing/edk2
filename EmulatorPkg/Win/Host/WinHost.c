@@ -56,6 +56,12 @@ NT_FD_INFO  *gFdInfo;
 UINTN             gSystemMemoryCount = 0;
 NT_SYSTEM_MEMORY  *gSystemMemory;
 
+VOID
+SecPrint (
+  CHAR8  *Format,
+  ...
+  );
+
 /*++
 
 Routine Description:
@@ -97,6 +103,12 @@ WinPeiAutoScan (
 
   *MemoryBase = gSystemMemory[Index].Memory;
   *MemorySize = gSystemMemory[Index].Size;
+
+  SecPrint ("SystemMemory allocated in %u KB of RAM at 0x%llx - 0x%llx \n\r\n\r",
+    gSystemMemory[Index].Size / SIZE_1KB,
+    gSystemMemory[Index].Memory,
+    gSystemMemory[Index].Memory + gSystemMemory[Index].Size
+    );
 
   return EFI_SUCCESS;
 }
@@ -442,6 +454,7 @@ Returns:
   // PPIs pased into PEI_CORE
   //
   AddThunkPpi (EFI_PEI_PPI_DESCRIPTOR_PPI, &gEmuThunkPpiGuid, &mSecEmuThunkPpi);
+  AddThunkPpi (EFI_PEI_PPI_DESCRIPTOR_PPI, &gSimicsIoPpiGuid, SimicsIoPpiPtr);
 
   //
   // Emulator Bus Driver Thunks
@@ -490,10 +503,10 @@ Returns:
 
   SetMem32 (TemporaryRam, TemporaryRamSize, PcdGet32 (PcdInitValueInTempStack));
 
-  SecPrint (
-    "  OS Emulator passing in %u KB of temp RAM at 0x%08lx to SEC\n\r",
+  SecPrint ("  OS Emulator passing in %u KB of temp RAM at 0x%llx - 0x%llx to SEC\n\r",
     TemporaryRamSize / SIZE_1KB,
-    TemporaryRam
+    TemporaryRam,
+    TemporaryRam + TemporaryRamSize
     );
 
   //
@@ -515,6 +528,11 @@ Returns:
     if (EFI_ERROR (Status)) {
       SecPrint ("ERROR : Could not allocate PeiServicesTablePage @ %p\n\r", EmuMagicPage);
       return EFI_DEVICE_ERROR;
+    } else {
+      SecPrint ("EmuMagicPage in %u KB of hardcode RAM at 0x%llx\n\r",
+        SIZE_4KB / SIZE_1KB,
+        EmuMagicPage
+        );
     }
   }
 
@@ -745,6 +763,8 @@ SecPeCoffGetEntryPoint (
   //
   ImageContext.ImageAddress += ImageContext.SectionAlignment - 1;
   ImageContext.ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)ImageContext.SectionAlignment - 1);
+
+  SecPrint ("ImageContext.ImageAddress = 0x%llx\n\r\n\r", ImageContext.ImageAddress);
 
   Status = PeCoffLoaderLoadImage (&ImageContext);
   if (EFI_ERROR (Status)) {
@@ -1056,6 +1076,7 @@ PeCoffLoaderRelocateImageExtraAction (
     // level debug
     //
     Library = LoadLibraryEx (DllFileName, NULL, DONT_RESOLVE_DLL_REFERENCES);
+    SecPrint ("To load DllFileName: %S and return handle: 0x%llx \n\r", DllFileName, Library);
     if (Library != NULL) {
       //
       // InitializeDriver is the entry point we put in all our EFI DLL's. The

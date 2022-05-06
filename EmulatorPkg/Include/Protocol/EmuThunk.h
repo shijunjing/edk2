@@ -171,6 +171,12 @@ VOID
   IN  EMU_SET_TIMER_CALLBACK  CallBack
   );
 
+typedef
+UINT64
+(EFIAPI *SIM_CONTINUE) (
+  IN  UINT64      Steps
+  );
+
 /**
   Enumerates the current set of protocol instances that abstract OS services from EFI.
 
@@ -241,6 +247,7 @@ struct _EMU_THUNK_PROTOCOL {
   EMU_GET_NEXT_PROTOCOL             GetNextProtocol;
 
   UINT64                            GuardCountExecuted;
+  SIM_CONTINUE                      SimContinue;
 };
 
 extern EFI_GUID  gEmuThunkProtocolGuid;

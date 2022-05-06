@@ -131,6 +131,7 @@ INF  EmulatorPkg/AutoScanPei/AutoScanPei.inf
 INF  EmulatorPkg/FirmwareVolumePei/FirmwareVolumePei.inf
 INF  EmulatorPkg/FlashMapPei/FlashMapPei.inf
 INF  EmulatorPkg/ThunkPpiToProtocolPei/ThunkPpiToProtocolPei.inf
+INF  EmulatorPkg/Simics/SampleDmaDevicePei/SampleDmaDevicePei.inf
 INF  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
 INF  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
 INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
