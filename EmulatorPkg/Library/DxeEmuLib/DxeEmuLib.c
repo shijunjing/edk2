@@ -13,7 +13,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/EmuThunkLib.h>
 #include <Library/BaseMemoryLib.h>
 
-EMU_THUNK_PROTOCOL  *gEmuThunk = NULL;
+EMU_THUNK_PROTOCOL   *gEmuThunk = NULL;
+SIMICS_IO_PPI        *gSimicsIo = NULL;
+
 
 /**
   The constructor function caches the pointer of EMU Thunk protocol.
@@ -38,6 +40,12 @@ DxeEmuLibConstructor (
 
   gEmuThunk = (EMU_THUNK_PROTOCOL *)(*(UINTN *)(GET_GUID_HOB_DATA (GuidHob)));
   ASSERT (gEmuThunk != NULL);
+
+  GuidHob = GetFirstGuidHob (&gSimicsIoPpiGuid);
+  ASSERT (GuidHob != NULL);
+
+  gSimicsIo = (SIMICS_IO_PPI *)(*(UINTN *)(GET_GUID_HOB_DATA (GuidHob)));
+  ASSERT (gSimicsIo != NULL);
 
   return EFI_SUCCESS;
 }

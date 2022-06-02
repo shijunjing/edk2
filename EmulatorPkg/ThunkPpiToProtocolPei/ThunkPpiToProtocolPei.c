@@ -16,7 +16,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PeiServicesTablePointerLib.h>
 
 #include <Ppi/EmuThunk.h>
-#include <Protocol/EmuThunk.h>
+#include <Ppi/SimicsIo.h>
 
 EFI_STATUS
 EFIAPI
@@ -45,6 +45,7 @@ Returns:
   EFI_PEI_PPI_DESCRIPTOR  *PpiDescriptor;
   EMU_THUNK_PPI           *Thunk;
   VOID                    *Ptr;
+  SIMICS_IO_PPI           *SimicsIo;
 
   DEBUG ((DEBUG_ERROR, "Emu Thunk PEIM Loaded\n"));
 
@@ -63,5 +64,21 @@ Returns:
     &Ptr,                                // Buffer
     sizeof (VOID *)                      // Sizeof Buffer
     );
+
+
+  Status = PeiServicesLocatePpi (
+              &gSimicsIoPpiGuid,        // GUID
+              0,                        // INSTANCE
+              &PpiDescriptor,           // EFI_PEI_PPI_DESCRIPTOR
+              (VOID **)&SimicsIo           // PPI
+              );
+  ASSERT_EFI_ERROR (Status);
+
+  BuildGuidDataHob (
+    &gSimicsIoPpiGuid,                  // Guid
+    &SimicsIo,                          // Buffer
+    sizeof (VOID *)                     // Sizeof Buffer
+    );
+
   return Status;
 }

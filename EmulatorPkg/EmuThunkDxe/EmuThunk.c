@@ -74,10 +74,9 @@ Returns:
   Handle = NULL;
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &Handle,
-                  &gEmuThunkProtocolGuid,
-                  gEmuThunk,
-                  &gEfiDevicePathProtocolGuid,
-                  &mEmuThunkDevicePath,
+                  &gEmuThunkProtocolGuid,       gEmuThunk,
+                  &gSimicsIoPpiGuid,            gSimicsIo,
+                  &gEfiDevicePathProtocolGuid,  &mEmuThunkDevicePath,
                   NULL
                   );
 

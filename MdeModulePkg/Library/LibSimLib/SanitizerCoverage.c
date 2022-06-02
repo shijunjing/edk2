@@ -164,15 +164,23 @@ void __sanitizer_cov_trace_pc_guard_init(UINT32* start, UINT32* stop) {
   ThunkPrint ("Total BB Count= 0x%x\n", N);
 }
 
+static int   BB_Recursion_Level;
+
 // clang only support no_sanitize("coverage") attribute if
 // compiler-rt project is enabled when build LLVM/Clang compiler
-// __attribute__((no_sanitize("coverage")))
+//__attribute__((no_sanitize("coverage")))
 void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
   EFI_STATUS                Status;
   EMU_THUNK_PPI             *ThunkPpi;
 
+
   if (!*guard) return;
 
+  BB_Recursion_Level++;
+  if (BB_Recursion_Level > 1) {
+    BB_Recursion_Level--;
+    return;
+  }
 
   //void *PC = __builtin_return_address(0);
   //char PcDescr[1024];
@@ -201,8 +209,21 @@ void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
       }
   } else{
       (*Guard_Executed)++;
-      Emu_Thunk->SimContinue (100);
+      if(Emu_Thunk->SimLazyContinue(10, TRUE) == 0){
+          //
+          // Check and handle the Simics device interrupts
+          //
+          if(Emu_Thunk->SimCheckInterrupt()){
+            // call the driver registed interrupt handler function, which might be instrumented
+            // and recursively call this BB callback function. Use BB_Recursion_Level to block
+            // >2 level BB instrumenation recursive call.
+            Emu_Thunk->SimHandleInterrupt();
+            Emu_Thunk->SimClearInterrupt();
+          }
+      }
   }
+
+  BB_Recursion_Level--;
 }
 
 // clang only support no_sanitize("coverage") attribute if

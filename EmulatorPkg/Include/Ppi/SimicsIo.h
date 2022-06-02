@@ -183,6 +183,72 @@ typedef struct {
   SIMICS_ACCESS_REG_NAME       Write;
 } SIMICS_IO_ACCESS_REG_VIA_NAME;
 
+/**
+  Reads from the I/O space of a PCI Root Bridge. Returns when either the polling exit criteria is
+  satisfied or after a defined duration.
+
+  @param  This                  A pointer to the EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL.
+  @param  Width                 Signifies the width of the memory or I/O operations.
+  @param  Address               The base address of the memory or I/O operations.
+  @param  Mask                  Mask used for the polling criteria.
+  @param  Value                 The comparison value used for the polling exit criteria.
+  @param  Delay                 The number of 100 ns units to poll.
+  @param  Result                Pointer to the last value read from the memory location.
+
+  @retval EFI_SUCCESS           The last data returned from the access matched the poll exit criteria.
+  @retval EFI_TIMEOUT           Delay expired before a match occurred.
+  @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack of resources.
+  @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
+
+**/
+typedef
+EFI_STATUS
+(EFIAPI *SIMICS_IO_POLL_IO_MEM)(
+  IN  SIMICS_IO_PPI                            *This,
+  IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
+  IN  UINT64                                   Address,
+  IN  UINT64                                   Mask,
+  IN  UINT64                                   Value,
+  IN  UINT64                                   Delay,
+  OUT UINT64                                   *Result
+  );
+
+
+/**
+  Enables a PCI driver to access PCI controller registers in the PCI root bridge memory space.
+
+  @param  This                  A pointer to the EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL.
+  @param  Width                 Signifies the width of the memory operations.
+  @param  Address               The base address of the memory operations.
+  @param  Count                 The number of memory operations to perform.
+  @param  Buffer                For read operations, the destination buffer to store the results. For write
+                                operations, the source buffer to write data from.
+
+  @retval EFI_SUCCESS           The data was read from or written to the PCI root bridge.
+  @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack of resources.
+  @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
+
+**/
+typedef
+EFI_STATUS
+(EFIAPI *SIMICS_IO_IO_MEM)(
+  IN      SIMICS_IO_PPI                           *This,
+  IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
+  IN     UINT64                                   Address,
+  IN     UINTN                                    Count,
+  IN OUT VOID                                     *Buffer
+  );
+
+typedef struct {
+  ///
+  /// Read PCI controller registers in the PCI root bridge memory space.
+  ///
+  SIMICS_IO_IO_MEM  Read;
+  ///
+  /// Write PCI controller registers in the PCI root bridge memory space.
+  ///
+  SIMICS_IO_IO_MEM  Write;
+} SIMICS_IO_ACCESS;
 
 /**
   Enables a PCI driver to copy one region of PCI root bridge memory space to another region of PCI
@@ -409,6 +475,12 @@ EFI_STATUS
 struct _SIMICS_IO_PPI{
   SIMICS_IO_ACCESS_REG_VIA_BANK   Bank;
   SIMICS_IO_ACCESS_REG_VIA_NAME   Reg;
+  EFI_HANDLE                      ParentHandle;
+  SIMICS_IO_POLL_IO_MEM           PollMem;
+  SIMICS_IO_POLL_IO_MEM           PollIo;
+  SIMICS_IO_ACCESS                Mem;
+  SIMICS_IO_ACCESS                Io;
+  SIMICS_IO_ACCESS                Pci;
   SIMICS_IO_COPY_MEM              CopyMem;
   SIMICS_IO_MAP                   Map;
   SIMICS_IO_UNMAP                 Unmap;

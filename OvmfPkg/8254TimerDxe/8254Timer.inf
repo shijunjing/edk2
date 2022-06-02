@@ -40,3 +40,6 @@
   gEfiCpuArchProtocolGuid AND gEfiLegacy8259ProtocolGuid
 [UserExtensions.TianoCore."ExtraFiles"]
   TimerExtra.uni
+
+[BuildOptions]
+  CLANGPDB:*_*_*_CC_FLAGS  = -fsanitize-coverage=edge,trace-pc-guard -fno-lto

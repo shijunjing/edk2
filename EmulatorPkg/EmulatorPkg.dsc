@@ -99,6 +99,9 @@
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
   SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
+  IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsicSev.inf
+  CcProbeLib|MdePkg/Library/CcProbeLibNull/CcProbeLibNull.inf
+  TdxLib|MdePkg/Library/TdxLib/TdxLib.inf
   #
   # Platform
   #
@@ -138,6 +141,7 @@
 !else
   AuthVariableLib|MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
 !endif
+
 
 [LibraryClasses.common.SEC]
   PeiServicesLib|EmulatorPkg/Library/SecPeiServicesLib/SecPeiServicesLib.inf
@@ -388,7 +392,14 @@
   EmulatorPkg/CpuRuntimeDxe/Cpu.inf
   MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
   EmulatorPkg/PlatformSmbiosDxe/PlatformSmbiosDxe.inf
-  EmulatorPkg/TimerDxe/Timer.inf
+  EmulatorPkg/Emu8259InterruptControllerDxe/8259.inf
+  #EmulatorPkg/TimerDxe/Timer.inf
+  OvmfPkg/8254TimerDxe/8254Timer.inf {
+    <LibraryClasses>
+    BaseLib|MdePkg/Library/BaseLib/UnitTestHostBaseLib.inf
+    IoLib|EmulatorPkg/SimicsBaseIoLibIntrinsic/SimicsBaseIoLibIntrinsic.inf
+    NULL|MdeModulePkg/Library/LibSimLib/LibSim.inf
+  }
 
 !if $(SECURE_BOOT_ENABLE) == TRUE
   SecurityPkg/VariableAuthenticated/SecureBootConfigDxe/SecureBootConfigDxe.inf

@@ -9,8 +9,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define __EMU_THUNK_LIB_H__
 
 #include <Protocol/EmuThunk.h>
+#include <Ppi/SimicsIo.h>
 
-extern EMU_THUNK_PROTOCOL  *gEmuThunk;
+
+extern EMU_THUNK_PROTOCOL   *gEmuThunk;
+extern SIMICS_IO_PPI        *gSimicsIo;
 
 /**
   Serach the EMU IO Thunk database for a matching EMU IO Thunk

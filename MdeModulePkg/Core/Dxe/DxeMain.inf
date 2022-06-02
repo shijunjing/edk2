@@ -201,5 +201,5 @@
 [UserExtensions.TianoCore."ExtraFiles"]
   DxeCoreExtra.uni
 
-#[BuildOptions]
-#  CLANGPDB:*_*_*_CC_FLAGS  = -fsanitize-coverage=edge,trace-pc-guard -fno-lto
+[BuildOptions]
+  CLANGPDB:*_*_*_CC_FLAGS  = -fsanitize-coverage=edge,trace-pc-guard -fno-lto

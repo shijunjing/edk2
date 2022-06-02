@@ -544,18 +544,107 @@ SecSetTime (
 
 extern conf_object_t *mem_obj;
 extern conf_object_t *dma_obj;
+bool in_simics_main_thread(void);
 
 UINT64
 SecSimContinue (
   IN  UINT64      Steps
   )
 {
-  SIM_continue(Steps);
-  double current_time;
-  current_time = SIM_time(dma_obj);
+  if (in_simics_main_thread()) {
+    SIM_continue(Steps);
+  } else {
+    printf("Error! call SIM_continue() from non-main thread\n");
+  }
+
+  return 0;
+  // double current_time;
+  // current_time = SIM_time(dma_obj);
   // current_time = SIM_time(mem_obj);
   //printf("current_time = %f \n", current_time);
 }
+
+
+UINT64
+SecSimLazyContinue (
+  IN  UINT64      Steps,
+  IN  BOOLEAN     Lazy
+  )
+{
+  static UINT64    LazySteps = 0;
+
+  LazySteps += Steps;
+
+  if (Lazy){
+    if (LazySteps < 1000){
+      return LazySteps;
+    }
+  }
+
+  SecSimContinue(LazySteps*10); //advance x10 times cycles
+  LazySteps = 0;
+
+  return 0;
+  // double current_time;
+  // current_time = SIM_time(dma_obj);
+  // current_time = SIM_time(mem_obj);
+  //printf("current_time = %f \n", current_time);
+}
+
+//
+// bugbug: need to support multiple interrupts list
+//
+static EFI_EXCEPTION_TYPE         mInterruptType;
+static SIM_INTERRUPT_HANDLER      mInterruptHandler;
+static VOID                       *mSystemContext;
+
+VOID
+EFIAPI
+SecSimRegisterInterrupt (
+  IN EFI_EXCEPTION_TYPE         InterruptType,
+  IN SIM_INTERRUPT_HANDLER      InterruptHandler,
+  IN VOID                       *SystemContext
+  )
+{
+
+  if (InterruptType != 0){
+      // bugbug: only support single mInterruptType
+      if (mInterruptType != 0){
+          ASSERT(mInterruptType == InterruptType);
+      }
+      mInterruptType = InterruptType;
+  }
+
+  if (InterruptHandler != NULL){
+      mInterruptHandler = InterruptHandler;
+  }
+
+  if (SystemContext != NULL){
+      mSystemContext = SystemContext;
+  }
+}
+
+VOID
+EFIAPI
+SecSimHandleInterrupt (
+  VOID
+  )
+{
+  if(mInterruptHandler != NULL){
+      mInterruptHandler(mInterruptType, mSystemContext);
+  }
+}
+
+
+BOOLEAN
+SecSimCheckInterrupt (
+  VOID
+  );
+
+VOID
+SecSimClearInterrupt (
+  VOID
+  );
 
 EMU_THUNK_PROTOCOL gEmuThunkProtocol = {
   SecWriteStdErr,
@@ -581,7 +670,11 @@ EMU_THUNK_PROTOCOL gEmuThunkProtocol = {
   SecSetTimer,
   GetNextThunkProtocol,
   0,                      //UINT64  GuardCountExecuted;
-  SecSimContinue          //SIM_CONTINUE
+  SecSimLazyContinue,     //SIM_CONTINUE
+  SecSimRegisterInterrupt,
+  SecSimCheckInterrupt,
+  SecSimHandleInterrupt,
+  SecSimClearInterrupt
 };
 
 #pragma warning(default : 4996)

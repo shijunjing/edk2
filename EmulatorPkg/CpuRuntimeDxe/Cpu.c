@@ -343,9 +343,10 @@ EmuRegisterInterruptHandler (
   }
 
   //
-  // Do nothing for Emu emulation
   //
-  return EFI_UNSUPPORTED;
+  //
+  gEmuThunk->SimRegisterInterrupt(InterruptType, InterruptHandler, NULL);
+  return EFI_SUCCESS;
 }
 
 EFI_STATUS

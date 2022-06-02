@@ -9,6 +9,33 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 static conf_object_t *sim_obj;
 
+//copy from simics-base\core\src\core\common\fatal.c
+#ifdef _WIN32
+static DWORD simics_main_thread_id;
+#else
+static pthread_t simics_main_thread;
+#endif
+
+void
+set_main_thread(void)
+{
+#ifdef _WIN32
+        simics_main_thread_id = GetCurrentThreadId();
+#else
+        simics_main_thread = pthread_self();
+#endif
+}
+
+bool
+in_simics_main_thread(void)
+{
+#ifdef _WIN32
+        return GetCurrentThreadId() == simics_main_thread_id;
+#else
+        return pthread_equal(pthread_self(), simics_main_thread);
+#endif
+}
+
 
 static void
 print_attribute(attr_value_t val)
@@ -194,7 +221,7 @@ SimicsIoRegRead (
   OUT    VOID             *Buffer
   )
 {
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -206,8 +233,373 @@ SimicsIoRegWrite (
   IN     VOID             *Buffer
   )
 {
+  return EFI_UNSUPPORTED;
+}
+
+
+EFI_STATUS
+EFIAPI
+SimicsIoPollMem (
+  IN  SIMICS_IO_PPI                            *This,
+  IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
+  IN  UINT64                                   Address,
+  IN  UINT64                                   Mask,
+  IN  UINT64                                   Value,
+  IN  UINT64                                   Delay,
+  OUT UINT64                                   *Result
+  )
+{
+  return EFI_UNSUPPORTED;
+}
+
+
+EFI_STATUS
+EFIAPI
+SimicsIoPollIo (
+  IN  SIMICS_IO_PPI                          *This,
+  IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
+  IN  UINT64                                 Address,
+  IN  UINT64                                 Mask,
+  IN  UINT64                                 Value,
+  IN  UINT64                                 Delay,
+  OUT UINT64                                 *Result
+  )
+{
+  return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS
+EFIAPI
+SimicsIoMemRead (
+  IN     SIMICS_IO_PPI                          *This,
+  IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
+  IN     UINT64                                 Address,
+  IN     UINTN                                  Count,
+  OUT    VOID                                   *Buffer
+  )
+{
+  return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS
+EFIAPI
+SimicsIoMemWrite (
+  IN     SIMICS_IO_PPI        *This,
+  IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
+  IN     UINT64                                 Address,
+  IN     UINTN                                  Count,
+  IN     VOID                                   *Buffer
+  )
+{
+  return EFI_UNSUPPORTED;
+}
+
+#define MAX_IO_PORT_ADDRESS   0xFFFF
+
+//
+// Lookup table for increment values based on transfer widths
+//
+UINT8 mInStride[] = {
+  1, // EfiCpuIoWidthUint8
+  2, // EfiCpuIoWidthUint16
+  4, // EfiCpuIoWidthUint32
+  8, // EfiCpuIoWidthUint64
+  0, // EfiCpuIoWidthFifoUint8
+  0, // EfiCpuIoWidthFifoUint16
+  0, // EfiCpuIoWidthFifoUint32
+  0, // EfiCpuIoWidthFifoUint64
+  1, // EfiCpuIoWidthFillUint8
+  2, // EfiCpuIoWidthFillUint16
+  4, // EfiCpuIoWidthFillUint32
+  8  // EfiCpuIoWidthFillUint64
+};
+
+//
+// Lookup table for increment values based on transfer widths
+//
+UINT8 mOutStride[] = {
+  1, // EfiCpuIoWidthUint8
+  2, // EfiCpuIoWidthUint16
+  4, // EfiCpuIoWidthUint32
+  8, // EfiCpuIoWidthUint64
+  1, // EfiCpuIoWidthFifoUint8
+  2, // EfiCpuIoWidthFifoUint16
+  4, // EfiCpuIoWidthFifoUint32
+  8, // EfiCpuIoWidthFifoUint64
+  0, // EfiCpuIoWidthFillUint8
+  0, // EfiCpuIoWidthFillUint16
+  0, // EfiCpuIoWidthFillUint32
+  0  // EfiCpuIoWidthFillUint64
+};
+
+EFI_STATUS
+CpuIoCheckParameter (
+  IN BOOLEAN                    MmioOperation,
+  IN EFI_CPU_IO_PROTOCOL_WIDTH  Width,
+  IN UINT64                     Address,
+  IN UINTN                      Count,
+  IN VOID                       *Buffer
+  )
+{
+  UINT64  MaxCount;
+  UINT64  Limit;
+
+  //
+  // Check to see if Buffer is NULL
+  //
+  if (Buffer == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Check to see if Width is in the valid range
+  //
+  if ((UINT32)Width >= EfiCpuIoWidthMaximum) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // For FIFO type, the target address won't increase during the access,
+  // so treat Count as 1
+  //
+  if (Width >= EfiCpuIoWidthFifoUint8 && Width <= EfiCpuIoWidthFifoUint64) {
+    Count = 1;
+  }
+
+  //
+  // Check to see if Width is in the valid range for I/O Port operations
+  //
+  Width = (EFI_CPU_IO_PROTOCOL_WIDTH) (Width & 0x03);
+  if (!MmioOperation && (Width == EfiCpuIoWidthUint64)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Check to see if Address is aligned
+  //
+  if ((Address & ((UINT64)mInStride[Width] - 1)) != 0) {
+    return EFI_UNSUPPORTED;
+  }
+
+  //
+  // Check to see if any address associated with this transfer exceeds the maximum
+  // allowed address.  The maximum address implied by the parameters passed in is
+  // Address + Size * Count.  If the following condition is met, then the transfer
+  // is not supported.
+  //
+  //    Address + Size * Count > (MmioOperation ? MAX_ADDRESS : MAX_IO_PORT_ADDRESS) + 1
+  //
+  // Since MAX_ADDRESS can be the maximum integer value supported by the CPU and Count
+  // can also be the maximum integer value supported by the CPU, this range
+  // check must be adjusted to avoid all oveflow conditions.
+  //
+  // The following form of the range check is equivalent but assumes that
+  // MAX_ADDRESS and MAX_IO_PORT_ADDRESS are of the form (2^n - 1).
+  //
+  Limit = (MmioOperation ? MAX_ADDRESS : MAX_IO_PORT_ADDRESS);
+  if (Count == 0) {
+    if (Address > Limit) {
+      return EFI_UNSUPPORTED;
+    }
+  } else {
+    MaxCount = RShiftU64 (Limit, Width);
+    if (MaxCount < (Count - 1)) {
+      return EFI_UNSUPPORTED;
+    }
+    if (Address > LShiftU64 (MaxCount - Count + 1, Width)) {
+      return EFI_UNSUPPORTED;
+    }
+  }
+
+  //
+  // Check to see if Buffer is aligned
+  // (IA-32 allows UINT64 and INT64 data types to be 32-bit aligned.)
+  //
+  if (((UINTN)Buffer & ((MIN (sizeof (UINTN), mInStride[Width])  - 1))) != 0) {
+    return EFI_UNSUPPORTED;
+  }
+
   return EFI_SUCCESS;
 }
+
+UINT64
+SecSimLazyContinue (
+  IN  UINT64      Steps,
+  IN  BOOLEAN     Lazy
+  );
+
+EFI_STATUS
+EFIAPI
+SimicsIoIoRead (
+  IN     SIMICS_IO_PPI                          *This,
+  IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
+  IN     UINT64                                 Address,
+  IN     UINTN                                  Count,
+  OUT    VOID                                   *Buffer
+  )
+{
+  CHAR8              Cmd[0x50];
+  UINTN              CmdLen;
+  attr_value_t       ret;
+  SIMICS_IO_PRIVATE                             *SimicsIoPrivate;
+  EFI_STATUS                 Status;
+  UINT8                      InStride;
+  UINT8                      OutStride;
+  EFI_CPU_IO_PROTOCOL_WIDTH  OperationWidth;
+  UINT8                      *Uint8Buffer;
+
+  SecSimLazyContinue(1, FALSE); // update the simics time before access any device
+
+  Status = CpuIoCheckParameter (FALSE, Width, Address, Count, Buffer);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  SimicsIoPrivate = SIMICS_IO_PRIVATE_FROM_THIS (This);
+
+  //
+  // Select loop based on the width of the transfer
+  //
+  InStride = mInStride[Width];
+  OutStride = mOutStride[Width];
+  OperationWidth = (EFI_CPU_IO_PROTOCOL_WIDTH) (Width & 0x03);
+
+  //
+  // Fifo operations supported for (mInStride[Width] == 0)
+  //
+  if (InStride == 0) {
+    switch (OperationWidth) {
+    case EfiCpuIoWidthUint8:
+    case EfiCpuIoWidthUint16:
+    case EfiCpuIoWidthUint32:
+    default:
+      //
+      // The CpuIoCheckParameter call above will ensure that this
+      // path is not taken.
+      //
+      ASSERT (FALSE);
+      break;
+    }
+  }
+
+  for (Uint8Buffer = Buffer; Count > 0; Address += InStride, Uint8Buffer += OutStride, Count--) {
+
+    ZeroMem(Cmd, sizeof(Cmd));
+    CmdLen = sizeof(Cmd);
+    CreateSimicsCliCmd(Cmd, &CmdLen, "io_space.read address = 0x%x size = 0x%x", Address, InStride);
+    printf("CmdLen=%llu\n", CmdLen);
+    printf("Cmd=%s\n", Cmd);
+    ret = SIM_run_command(Cmd);
+    if (SIM_clear_exception()) {
+            printf("Got exception: %s\n", SIM_last_error());
+    } else {
+            printf("Cmd (%s) return value: ", Cmd);
+            print_attribute(ret);
+            printf("\n");
+    }
+
+    if (OperationWidth == EfiCpuIoWidthUint8) {
+      //*Uint8Buffer = IoRead8 ((UINTN)Address);
+      *Uint8Buffer = (UINT8) SIM_attr_integer(ret);
+    } else if (OperationWidth == EfiCpuIoWidthUint16) {
+      //*((UINT16 *)Uint8Buffer) = IoRead16 ((UINTN)Address);
+      *((UINT16 *)Uint8Buffer) = (UINT16) SIM_attr_integer(ret);
+    } else if (OperationWidth == EfiCpuIoWidthUint32) {
+      //*((UINT32 *)Uint8Buffer) = IoRead32 ((UINTN)Address);
+      *((UINT32 *)Uint8Buffer) = (UINT32) SIM_attr_integer(ret);
+    }
+
+    SIM_attr_free(&ret);
+  }
+
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+EFIAPI
+SimicsIoIoWrite (
+  IN       SIMICS_IO_PPI                           *This,
+  IN       EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH   Width,
+  IN       UINT64                                  Address,
+  IN       UINTN                                   Count,
+  IN       VOID                                    *Buffer
+  )
+{
+  CHAR8              Cmd[0x50];
+  UINTN              CmdLen;
+  attr_value_t       ret;
+  SIMICS_IO_PRIVATE          *SimicsIoPrivate;
+  EFI_STATUS                 Status;
+  UINT8                      InStride;
+  UINT8                      OutStride;
+  EFI_CPU_IO_PROTOCOL_WIDTH  OperationWidth;
+  UINT8                      *Uint8Buffer;
+
+  SecSimLazyContinue(1, FALSE); // update the simics time before access any device
+
+  Status = CpuIoCheckParameter (FALSE, Width, Address, Count, Buffer);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  SimicsIoPrivate = SIMICS_IO_PRIVATE_FROM_THIS (This);
+
+  //
+  // Select loop based on the width of the transfer
+  //
+  InStride = mInStride[Width];
+  OutStride = mOutStride[Width];
+  OperationWidth = (EFI_CPU_IO_PROTOCOL_WIDTH) (Width & 0x03);
+
+  //
+  // Fifo operations supported for (mInStride[Width] == 0)
+  //
+  if (InStride == 0) {
+    switch (OperationWidth) {
+    case EfiCpuIoWidthUint8:
+    case EfiCpuIoWidthUint16:
+    case EfiCpuIoWidthUint32:
+    default:
+      //
+      // The CpuIoCheckParameter call above will ensure that this
+      // path is not taken.
+      //
+      ASSERT (FALSE);
+      break;
+    }
+  }
+
+  for (Uint8Buffer = (UINT8 *)Buffer; Count > 0; Address += InStride, Uint8Buffer += OutStride, Count--) {
+    ZeroMem(Cmd, sizeof(Cmd));
+    CmdLen = sizeof(Cmd);
+
+    if (OperationWidth == EfiCpuIoWidthUint8) {
+      //IoWrite8 ((UINTN)Address, *Uint8Buffer);
+      CreateSimicsCliCmd(Cmd, &CmdLen, "io_space.write address = 0x%x value = 0x%x size = 0x%x", Address, *Uint8Buffer, InStride);
+    } else if (OperationWidth == EfiCpuIoWidthUint16) {
+      //IoWrite16 ((UINTN)Address, *((UINT16 *)Uint8Buffer));
+      CreateSimicsCliCmd(Cmd, &CmdLen, "io_space.write address = 0x%x value = 0x%x size = 0x%x", Address, *((UINT16 *)Uint8Buffer), InStride);
+    } else if (OperationWidth == EfiCpuIoWidthUint32) {
+      //IoWrite32 ((UINTN)Address, *((UINT32 *)Uint8Buffer));
+      CreateSimicsCliCmd(Cmd, &CmdLen, "io_space.write address = 0x%x value = 0x%x size = 0x%x", Address, *((UINT32 *)Uint8Buffer), InStride);
+    }
+
+    printf("CmdLen=%llu\n", CmdLen);
+    printf("Cmd=%s\n", Cmd);
+    ret = SIM_run_command(Cmd);
+    if (SIM_clear_exception()) {
+            printf("Got exception: %s\n", SIM_last_error());
+    } else {
+            printf("Cmd (%s) return value: ", Cmd);
+            print_attribute(ret);
+            SIM_attr_free(&ret);
+            printf("\n");
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
 
 EFI_STATUS
 EFIAPI
@@ -219,7 +611,7 @@ SimicsIoCopyMem (
   IN     UINTN                                    Count
   )
 {
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -374,10 +766,52 @@ SimicsIoConfiguration (
   return EFI_SUCCESS;
 }
 
+VOID
+SecSimClearInterrupt (
+  VOID
+  )
+{
+  attr_value_t ret = SIM_run_python("cli.conf.sig.object_data.timeout_flag = 0");
+  // printf("clear cli.conf.sig.object_data.timeout_flag = 0");
+  // print_attribute(ret);
+  SIM_attr_free(&ret);
+}
+
+extern volatile BOOLEAN        mInterruptEnabled;
+
+BOOLEAN
+SecSimCheckInterrupt (
+  VOID
+  )
+{
+  int flag = 0;
+
+  //
+  // directly return if CPU interrupted has been disabled
+  //
+  if (!mInterruptEnabled){
+    return FALSE;
+  }
+
+  attr_value_t ret = SIM_run_python("cli.conf.sig.object_data.timeout_flag");
+  //printf("cli.conf.sig.object_data.timeout_flag:");
+  //print_attribute(ret);
+  flag = (int) SIM_attr_integer(ret);
+  SIM_attr_free(&ret);
+
+  if (flag){
+    return TRUE;
+  }else{
+    return FALSE;
+  }
+}
+
 void
 InitSimics(int argc, char *argv[], char *envp[])
 {
-  UINT64    MemoryMapOffset;
+  UINT64    MemoryMapOffset = 0;
+
+  set_main_thread();
 
   // set a few parameters for demo purpose
   static init_arg_t init_args[] = {
@@ -392,8 +826,8 @@ InitSimics(int argc, char *argv[], char *envp[])
      allocation needs it. */
   // https://simics-download.pdx.intel.com/simics-6/docs/html/reference-manual-api/simulator-api-functions.html#SIM_init_environment
   SIM_init_environment(argv,
-                       1,    /* let Simics handle signals */
-                       1);   /* allow Simics to dump core */
+                       false,    /* don't let Simics handle signals */
+                       false);   /* don't allow Simics to dump core */
 
   /* Initialize the simulator core */
   SIM_init_simulator2(init_args);
@@ -448,7 +882,7 @@ InitSimics(int argc, char *argv[], char *envp[])
   // SIM_continue(10000000);
   // current_time = SIM_time(mem_obj);
   // printf("current_time after run 10000000 steps = %f \n", current_time);
-
+# if 0
   attr_value_t ret = SIM_run_command("run-python-file filename = \"%simics%/modules/sample-dma-device/test/s-sampledma-go-to-host.py\"");
   if (SIM_clear_exception()) {
           printf("Got exception: %s\n", SIM_last_error());
@@ -469,7 +903,7 @@ InitSimics(int argc, char *argv[], char *envp[])
           current_time = SIM_time(dma_obj);
           printf("current_time after run 10000000 steps = %f \n", current_time);
 
-          SIM_run_command("log-level 4");
+          SIM_run_command("log-level 0");
   }
 
   MemoryMapOffset = 0;
@@ -488,6 +922,7 @@ InitSimics(int argc, char *argv[], char *envp[])
       printf("Error: Memory Map Offset is set to 0");
       return ;
   }
+#endif
 
   ZeroMem (&mSimicsIoPrivate, sizeof (mSimicsIoPrivate));
   SimicsIoPpiPtr = &mSimicsIoPrivate.SimicsIo;
@@ -495,6 +930,12 @@ InitSimics(int argc, char *argv[], char *envp[])
   SimicsIoPpiPtr->Bank.Write       = SimicsIoBankWrite;
   SimicsIoPpiPtr->Reg.Read         = SimicsIoRegRead;
   SimicsIoPpiPtr->Reg.Write        = SimicsIoRegWrite;
+  SimicsIoPpiPtr->PollMem          = SimicsIoPollMem;
+  SimicsIoPpiPtr->PollIo           = SimicsIoPollIo;
+  SimicsIoPpiPtr->Mem.Read         = SimicsIoMemRead;
+  SimicsIoPpiPtr->Mem.Write        = SimicsIoMemWrite;
+  SimicsIoPpiPtr->Io.Read          = SimicsIoIoRead;
+  SimicsIoPpiPtr->Io.Write         = SimicsIoIoWrite;
   SimicsIoPpiPtr->CopyMem          = SimicsIoCopyMem;
   SimicsIoPpiPtr->Map              = SimicsIoMap;
   SimicsIoPpiPtr->Unmap            = SimicsIoUnmap;
@@ -506,10 +947,59 @@ InitSimics(int argc, char *argv[], char *envp[])
   SimicsIoPpiPtr->Configuration    = SimicsIoConfiguration;
   SimicsIoPpiPtr->CliDevName       = "mydma";
   SimicsIoPpiPtr->CliDevNameLength = AsciiStrSize("mydma");
-  SimicsIoPpiPtr->ClassName        = SIM_object_class(dma_obj)->name;
-  SimicsIoPpiPtr->ClassNameLength  = AsciiStrSize(SimicsIoPpiPtr->ClassName);
+  //SimicsIoPpiPtr->ClassName        = SIM_object_class(dma_obj)->name;
+  //SimicsIoPpiPtr->ClassNameLength  = AsciiStrSize(SimicsIoPpiPtr->ClassName);
 
   mSimicsIoPrivate.DmaBufferOffset = MemoryMapOffset;
+
+  attr_value_t ret = SIM_run_command("run-python-file filename = \"%simics%/modules/8254/test/timer_tb.py\"");
+  if (SIM_clear_exception()) {
+          printf("Got exception: %s\n", SIM_last_error());
+  } else {
+          printf("Command return value: ");
+          print_attribute(ret);
+          SIM_attr_free(&ret);
+          printf("\n");
+
+          // dma_obj = SIM_get_object("mydma");
+          // double current_time;
+          // current_time = SIM_time(dma_obj);
+          // printf("current_time= %f \n", current_time);
+          // SIM_run_command("run 1 s");
+          // current_time = SIM_time(dma_obj);
+          // printf("current_time after run 1 s = %f \n", current_time);
+          // SIM_continue(10000000);
+          // current_time = SIM_time(dma_obj);
+          // printf("current_time after run 10000000 steps = %f \n", current_time);
+
+          SIM_run_command("log-level 1");
+
+          ret = SIM_run_python("cli.conf.sig.object_data.level");
+          printf("cli.conf.sig.object_data.level: ");
+          print_attribute(ret);
+          SIM_attr_free(&ret);
+          printf("\n");
+
+          SIM_run_python("cli.conf.sig.object_data.level = 1");
+          ret = SIM_run_python("cli.conf.sig.object_data.level");
+          printf("cli.conf.sig.object_data.level: ");
+          print_attribute(ret);
+          SIM_attr_free(&ret);
+          printf("\n");
+  }
+
+
+  // attr_value_t ret = SIM_run_command("run-python-file filename = \"%simics%/modules/8254/test/clock.py\"");
+  // if (SIM_clear_exception()) {
+          // printf("Got exception: %s\n", SIM_last_error());
+  // } else {
+          // printf("Command return value: ");
+          // print_attribute(ret);
+          // SIM_attr_free(&ret);
+          // printf("\n");
+
+          // SIM_run_command("log-level 0");
+  // }
 
   // SIM_init_command_line();
   // SIM_main_loop();

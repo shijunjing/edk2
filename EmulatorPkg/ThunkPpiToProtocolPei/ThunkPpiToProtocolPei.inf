@@ -43,7 +43,7 @@
 
 [Ppis]
   gEmuThunkPpiGuid                          # PPI ALWAYS_CONSUMED
-
+  gSimicsIoPpiGuid                          # PPI ALWAYS_CONSUMED
 
 [Depex]
   gEmuThunkPpiGuid AND gEfiPeiMemoryDiscoveredPpiGuid

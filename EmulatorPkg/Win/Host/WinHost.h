@@ -205,6 +205,7 @@ VOID
 SecInitializeThunk (
   VOID
 );
+
 extern EMU_THUNK_PROTOCOL    gEmuThunkProtocol;
 extern EMU_IO_THUNK_PROTOCOL mWinNtWndThunkIo;
 extern EMU_IO_THUNK_PROTOCOL mWinNtFileSystemThunkIo;

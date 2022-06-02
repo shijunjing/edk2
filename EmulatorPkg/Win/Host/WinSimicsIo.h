@@ -45,7 +45,7 @@ typedef jmp_buf sigjmp_buf;
 #endif /* _WIN32 */
 
 #include "WinHost.h"
-
+#include <Protocol/CpuIo2.h>
 
 
 #define SIMICS_IO_SIGNATURE SIGNATURE_32 ('s', 'c', 'i', 'o')

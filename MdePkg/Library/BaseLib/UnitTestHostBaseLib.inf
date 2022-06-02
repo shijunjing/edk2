@@ -18,8 +18,7 @@
   FILE_GUID                      = 9555A0D3-09BA-46C4-A51A-45198E3C765E
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.1
-  LIBRARY_CLASS                  = BaseLib|HOST_APPLICATION
-  LIBRARY_CLASS                  = UnitTestHostBaseLib|HOST_APPLICATION
+  LIBRARY_CLASS                  = BaseLib
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 EBC ARM AARCH64 RISCV64

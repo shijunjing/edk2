@@ -39,3 +39,5 @@
 [Protocols]
   gEmuThunkProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
 
+[Ppis]
+  gSimicsIoPpiGuid                          # PPI ALWAYS_CONSUMED

@@ -131,7 +131,7 @@ INF  EmulatorPkg/AutoScanPei/AutoScanPei.inf
 INF  EmulatorPkg/FirmwareVolumePei/FirmwareVolumePei.inf
 INF  EmulatorPkg/FlashMapPei/FlashMapPei.inf
 INF  EmulatorPkg/ThunkPpiToProtocolPei/ThunkPpiToProtocolPei.inf
-INF  EmulatorPkg/Simics/SampleDmaDevicePei/SampleDmaDevicePei.inf
+#INF  EmulatorPkg/Simics/SampleDmaDevicePei/SampleDmaDevicePei.inf
 INF  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
 INF  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
 INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
@@ -155,7 +155,9 @@ INF  EmulatorPkg/EmuThunkDxe/EmuThunk.inf
 INF  EmulatorPkg/CpuRuntimeDxe/Cpu.inf
 INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 INF  EmulatorPkg/PlatformSmbiosDxe/PlatformSmbiosDxe.inf
-INF  EmulatorPkg/TimerDxe/Timer.inf
+INF  EmulatorPkg/Emu8259InterruptControllerDxe/8259.inf
+#INF  EmulatorPkg/TimerDxe/Timer.inf
+INF  OvmfPkg/8254TimerDxe/8254Timer.inf
 INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 INF  MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
 INF  MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf

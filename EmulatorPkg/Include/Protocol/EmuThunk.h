@@ -20,6 +20,8 @@
 
 #include <Protocol/EmuIoThunk.h>
 #include <Protocol/DevicePath.h>
+#include <Protocol/Cpu.h>
+
 
 typedef struct {
   VENDOR_DEVICE_PATH    VendorDevicePath;
@@ -173,9 +175,50 @@ VOID
 
 typedef
 UINT64
-(EFIAPI *SIM_CONTINUE) (
-  IN  UINT64      Steps
+(EFIAPI *SIM_LAZY_CONTINUE) (
+  IN  UINT64      Steps,
+  IN  BOOLEAN     Lazy
   );
+
+
+typedef
+VOID
+(EFIAPI *SIM_INTERRUPT_HANDLER)(
+  IN CONST  EFI_EXCEPTION_TYPE  InterruptType,
+  IN CONST  VOID                *SystemContext
+  );
+
+typedef
+BOOLEAN
+(EFIAPI *SIM_INTERRUPT_CHECKER)(
+  IN CONST  EFI_EXCEPTION_TYPE  InterruptType
+  );
+
+typedef
+VOID
+(EFIAPI *SIM_REGISTER_INTERRUPT) (
+  IN EFI_EXCEPTION_TYPE         InterruptType,
+  IN SIM_INTERRUPT_HANDLER      InterruptHandler,
+  IN VOID                       *SystemContext
+  );
+
+typedef
+BOOLEAN
+(EFIAPI *SIM_CHECK_INTERRUPT)(
+  VOID
+);
+
+typedef
+VOID
+(EFIAPI *SIM_HANDLE_INTERRUPT)(
+  VOID
+);
+
+typedef
+VOID
+(EFIAPI *SIM_CLEAR_INTERRUPT)(
+  VOID
+);
 
 /**
   Enumerates the current set of protocol instances that abstract OS services from EFI.
@@ -247,7 +290,11 @@ struct _EMU_THUNK_PROTOCOL {
   EMU_GET_NEXT_PROTOCOL             GetNextProtocol;
 
   UINT64                            GuardCountExecuted;
-  SIM_CONTINUE                      SimContinue;
+  SIM_LAZY_CONTINUE                 SimLazyContinue;
+  SIM_REGISTER_INTERRUPT            SimRegisterInterrupt;
+  SIM_CHECK_INTERRUPT               SimCheckInterrupt;
+  SIM_HANDLE_INTERRUPT              SimHandleInterrupt;
+  SIM_CLEAR_INTERRUPT               SimClearInterrupt;
 };
 
 extern EFI_GUID  gEmuThunkProtocolGuid;
