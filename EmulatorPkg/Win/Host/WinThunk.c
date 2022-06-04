@@ -243,7 +243,7 @@ CRITICAL_SECTION  mNtCriticalSection;
 //
 UINT  mMMTimerThreadID = 0;
 
-volatile BOOLEAN  mInterruptEnabled = FALSE;
+volatile BOOLEAN  mInterruptEnabled = TRUE;
 
 VOID
 CALLBACK
@@ -419,7 +419,16 @@ SecEnableInterrupt (
   VOID
   )
 {
+  if(mInterruptEnabled){
+    return;
+  }
+
   mInterruptEnabled = TRUE;
+  if(SecSimCheckInterrupt()){
+    // call the driver registed interrupt handler function
+    SecSimHandleInterrupt();
+    SecSimClearInterrupt();
+  }
 }
 
 VOID
@@ -455,12 +464,19 @@ SecSleep (
   Sleep ((DWORD)DivU64x32 (Nanoseconds, 1000000));
 }
 
+UINT64
+SecSimLazyContinue (
+  IN  UINT64      Steps,
+  IN  BOOLEAN     Lazy
+  );
+
 VOID
 SecCpuSleep (
   VOID
   )
 {
   Sleep (1);
+  SecSimLazyContinue(400, FALSE);
 }
 
 VOID
@@ -630,21 +646,23 @@ SecSimHandleInterrupt (
   VOID
   )
 {
+  static int   Recursion_Level;
+
+  Recursion_Level++;
+  if (Recursion_Level > 1) {
+    Recursion_Level--;
+    return;
+  }
+
   if(mInterruptHandler != NULL){
       mInterruptHandler(mInterruptType, mSystemContext);
   }
+
+  Recursion_Level--;
 }
 
 
-BOOLEAN
-SecSimCheckInterrupt (
-  VOID
-  );
 
-VOID
-SecSimClearInterrupt (
-  VOID
-  );
 
 EMU_THUNK_PROTOCOL gEmuThunkProtocol = {
   SecWriteStdErr,

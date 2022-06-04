@@ -45,7 +45,14 @@ EmuResetSystem (
                   );
   if (!EFI_ERROR (Status)) {
     for (Index = 0; Index < HandleCount; Index++) {
-      Status = gBS->DisconnectController (HandleBuffer[Index], NULL, NULL);
+      // Bugbug, the NOTIFY TPL event mWatchdogTimerEvent could call the gRT->ResetSystem
+      // in its event callback function WatchdogTimerDriverExpires(), which will continue
+      // call below DisconnectController() boot service in TPL NOTIFY level. It is wrong
+      // to call DisconnectController() boot service in TPL NOTIFY level.
+      //
+      // It is uncessary to disconnect all devices before exit windows simulation application,
+      // so, just skip it.
+      //Status = gBS->DisconnectController (HandleBuffer[Index], NULL, NULL);
     }
 
     gBS->FreePool (HandleBuffer);

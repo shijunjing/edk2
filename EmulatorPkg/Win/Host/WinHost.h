@@ -206,6 +206,28 @@ SecInitializeThunk (
   VOID
 );
 
+BOOLEAN
+SecSimCheckInterrupt (
+  VOID
+  );
+
+VOID
+EFIAPI
+SecSimHandleInterrupt (
+  VOID
+  );
+
+VOID
+SecSimClearInterrupt (
+  VOID
+  );
+
+UINT64
+SecSimLazyContinue (
+  IN  UINT64      Steps,
+  IN  BOOLEAN     Lazy
+  );
+
 extern EMU_THUNK_PROTOCOL    gEmuThunkProtocol;
 extern EMU_IO_THUNK_PROTOCOL mWinNtWndThunkIo;
 extern EMU_IO_THUNK_PROTOCOL mWinNtFileSystemThunkIo;

@@ -209,7 +209,7 @@ void __sanitizer_cov_trace_pc_guard(UINT32* guard) {
       }
   } else{
       (*Guard_Executed)++;
-      if(Emu_Thunk->SimLazyContinue(10, TRUE) == 0){
+      if(Emu_Thunk->SimLazyContinue(5, TRUE) == 0){
           //
           // Check and handle the Simics device interrupts
           //
